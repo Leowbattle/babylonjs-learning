@@ -50,8 +50,11 @@ const createScene = function (engine: BABYLON.Engine, canvas: HTMLCanvasElement)
 	// Add to the scene an axis visualiser
 	const axis = new BABYLON.AxesViewer(scene);
 
+	const player = new BABYLON.Mesh("player", scene);
+
 	const box = BABYLON.MeshBuilder.CreateBox("box", { width: 1, height: 2, depth: 1 }, scene);
 	box.position.y = 1;
+	box.parent = player;
 
 	const boxMaterial = new BABYLON.StandardMaterial("boxMaterial", scene);
 	// boxMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0);
@@ -59,30 +62,28 @@ const createScene = function (engine: BABYLON.Engine, canvas: HTMLCanvasElement)
 	boxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
 	box.material = boxMaterial;
 
-	box.setPivotPoint(new BABYLON.Vector3(-0.5, -1, 0));
+	const pivotPos = [
+		new BABYLON.Vector3(-0.5, 0, 0),
+		new BABYLON.Vector3(0.5, 0, 0),
+		new BABYLON.Vector3(0, 0, -0.5),
+		new BABYLON.Vector3(0, 0, 0.5),
+	];
 
-	BABYLON.Animation.CreateAndStartAnimation("rot", box, "rotation.z", 60, 15, 0, Math.PI/2, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT, new BABYLON.CubicEase(), () => {
-		box.setPivotPoint(new BABYLON.Vector3(0, 0, 0));
-		box.position.y = 0.5;
-		box.position.x -= 1.5;
+	let pivots = [];
+	for (let i = 0; i < pivotPos.length; i++) {
+		const pivot = BABYLON.MeshBuilder.CreateSphere("pivot" + i, { diameter: 0.2 }, scene);
+		pivot.position = pivotPos[i];
+		pivot.parent = player;
+		pivots.push(pivot);
+	}
 
-		// box.setPivotPoint(new BABYLON.Vector3(-0.5, 1, 0), true);
-	});
+	function rotBox(i: number, onFinish?: () => void) {
+		box.parent = pivots[i];
 
-	// Visualise the pivot point
-	const pivot1 = BABYLON.MeshBuilder.CreateSphere("pivot1", { diameter: 0.2 }, scene);
-	pivot1.parent = box;
-	pivot1.position = new BABYLON.Vector3(-0.5, -1, 0);
-	pivot1.material = new BABYLON.StandardMaterial("pivotMaterial", scene);
-	pivot1.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+		BABYLON.Animation.CreateAndStartAnimation("rotBox", pivots[i], "rotation.z", 60, 15, 0, Math.PI / 2, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT, undefined, onFinish);
+	}
 
-	// Pivot 2, point (0.5, -1, 0)
-	const pivot2 = BABYLON.MeshBuilder.CreateSphere("pivot2", { diameter: 0.2 }, scene);
-	pivot2.parent = box;
-	pivot2.position = new BABYLON.Vector3(-0.5, 1, 0);
-	pivot2.material = new BABYLON.StandardMaterial("pivotMaterial", scene);
-	pivot2.material.diffuseColor = new BABYLON.Color3(0, 1, 0);
-
+	rotBox(0, () => rotBox(1));
 
 	return scene;
 };
