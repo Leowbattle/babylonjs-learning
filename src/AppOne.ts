@@ -47,10 +47,14 @@ const createScene = function (engine: BABYLON.Engine, canvas: HTMLCanvasElement)
 	groundMaterial.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.8);
 	ground.material = groundMaterial;
 
-	// Add to the scene an axis visualiser
-	const axis = new BABYLON.AxesViewer(scene);
-
+	
 	const player = new BABYLON.Mesh("player", scene);
+	
+	// Add to the scene an axis visualiser
+	// const axis = new BABYLON.AxesViewer(scene);
+	// axis.xAxis.parent = player;
+	// axis.yAxis.parent = player;
+	// axis.zAxis.parent = player;
 
 	const box = BABYLON.MeshBuilder.CreateBox("box", { width: 1, height: 2, depth: 1 }, scene);
 	box.position.y = 1;
@@ -67,23 +71,43 @@ const createScene = function (engine: BABYLON.Engine, canvas: HTMLCanvasElement)
 		new BABYLON.Vector3(0.5, 0, 0),
 		new BABYLON.Vector3(0, 0, -0.5),
 		new BABYLON.Vector3(0, 0, 0.5),
-	];
 
+		new BABYLON.Vector3(-0.5, 2, 0),
+		new BABYLON.Vector3(0.5, 2, 0),
+		new BABYLON.Vector3(0, 2, -0.5),
+		new BABYLON.Vector3(0, 2, 0.5),
+
+		new BABYLON.Vector3(-0.5, 1, -0.5),
+		new BABYLON.Vector3(0.5, 1, -0.5),
+		new BABYLON.Vector3(-0.5, 1, 0.5),
+		new BABYLON.Vector3(0.5, 1, 0.5),
+	];
 	let pivots = [];
-	for (let i = 0; i < pivotPos.length; i++) {
-		const pivot = BABYLON.MeshBuilder.CreateSphere("pivot" + i, { diameter: 0.2 }, scene);
-		pivot.position = pivotPos[i];
+	pivotPos.forEach((pos, index) => {
+		const pivot = BABYLON.MeshBuilder.CreateSphere("pivot" + index, { diameter: 0.2 }, scene);
+		pivot.position = pos;
 		pivot.parent = player;
 		pivots.push(pivot);
+	});
+	
+	function rotBlock(i: number, axis: string, angle: number, onFinish?: () => void) {
+		const currentWorldPosition = player.getAbsolutePosition().clone();
+
+		player.setPivotPoint(pivots[i].position);
+		
+		// Calculate and set the new position to maintain the same world position
+		// We need to reset the player position first to accurately calculate the offset
+		const originalPosition = player.position.clone();
+		player.position = new BABYLON.Vector3(0, 0, 0);
+		const pivotDelta = player.getAbsolutePosition().subtract(currentWorldPosition);
+		player.position = originalPosition.subtract(pivotDelta);
+
+		BABYLON.Animation.CreateAndStartAnimation("rot", player, "rotation." + axis, 60, 15, 0, angle, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT, undefined, onFinish);
 	}
 
-	function rotBox(i: number, onFinish?: () => void) {
-		box.parent = pivots[i];
-
-		BABYLON.Animation.CreateAndStartAnimation("rotBox", pivots[i], "rotation.z", 60, 15, 0, Math.PI / 2, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT, undefined, onFinish);
-	}
-
-	rotBox(0, () => rotBox(1));
+	setTimeout(() => rotBlock(0, "z", Math.PI / 2), 0);
+	setTimeout(() => rotBlock(8, "x", -Math.PI / 2), 500);
+	//setTimeout(() => rotBlock(9, "x", Math.PI / 2), 1000);
 
 	return scene;
 };
