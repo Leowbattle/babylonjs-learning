@@ -10,7 +10,6 @@ export class AppOne {
 			this.engine.resize();
 		});
 		this.scene = createScene(this.engine, this.canvas)
-
 	}
 
 	debug(debugOn: boolean = true) {
@@ -32,9 +31,8 @@ export class AppOne {
 const createScene = function (engine: BABYLON.Engine, canvas: HTMLCanvasElement) {
 	const scene = new BABYLON.Scene(engine);
 
-	const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, 1.1104, 20, new BABYLON.Vector3(0, 0, 0), scene);
-	camera.attachControl(canvas, true);
-	camera.inputs.removeByType("ArcRotateCameraKeyboardMoveInput");
+	const camera = new BABYLON.FreeCamera("camera", new BABYLON.Vector3(10, 5, -10), scene);
+	camera.rotationQuaternion = new BABYLON.Quaternion(0, 0, 0, 1);
 
 	const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 	light.intensity = 0.7;
@@ -42,72 +40,98 @@ const createScene = function (engine: BABYLON.Engine, canvas: HTMLCanvasElement)
 	const directionalLight = new BABYLON.DirectionalLight("dir01", new BABYLON.Vector3(0.2, -1, 0.5), scene);
 	directionalLight.position = new BABYLON.Vector3(0, 10, 0);
 
-	const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 6, height: 6 }, scene);
-	const groundMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
-	groundMaterial.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.8);
-	ground.material = groundMaterial;
-
-	
-	const player = new BABYLON.Mesh("player", scene);
-	
-	// Add to the scene an axis visualiser
-	// const axis = new BABYLON.AxesViewer(scene);
-	// axis.xAxis.parent = player;
-	// axis.yAxis.parent = player;
-	// axis.zAxis.parent = player;
-
-	const box = BABYLON.MeshBuilder.CreateBox("box", { width: 1, height: 2, depth: 1 }, scene);
-	box.position.y = 1;
-	box.parent = player;
-
-	const boxMaterial = new BABYLON.StandardMaterial("boxMaterial", scene);
-	// boxMaterial.diffuseColor = new BABYLON.Color3(1, 0, 0);
-	boxMaterial.diffuseTexture = new BABYLON.Texture("https://www.babylonjs-playground.com/textures/wood.jpg", scene);
-	boxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-	box.material = boxMaterial;
-
-	const pivotPos = [
-		new BABYLON.Vector3(-0.5, 0, 0),
-		new BABYLON.Vector3(0.5, 0, 0),
-		new BABYLON.Vector3(0, 0, -0.5),
-		new BABYLON.Vector3(0, 0, 0.5),
-
-		new BABYLON.Vector3(-0.5, 2, 0),
-		new BABYLON.Vector3(0.5, 2, 0),
-		new BABYLON.Vector3(0, 2, -0.5),
-		new BABYLON.Vector3(0, 2, 0.5),
-
-		new BABYLON.Vector3(-0.5, 1, -0.5),
-		new BABYLON.Vector3(0.5, 1, -0.5),
-		new BABYLON.Vector3(-0.5, 1, 0.5),
-		new BABYLON.Vector3(0.5, 1, 0.5),
+	const meshes = [];
+	// Array of available shape creation functions
+	const shapeCreators = [
+		() => BABYLON.MeshBuilder.CreateBox("box", { size: 1 + Math.random() * 0.5 }, scene),
+		() => BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 1 + Math.random() * 0.5 }, scene),
+		() => BABYLON.MeshBuilder.CreateCylinder("cylinder", { height: 1 + Math.random() * 0.5, diameter: 1 + Math.random() * 0.5 }, scene),
+		() => BABYLON.MeshBuilder.CreateTorus("torus", { diameter: 1 + Math.random() * 0.5, thickness: 0.3 + Math.random() * 0.2 }, scene),
+		() => BABYLON.MeshBuilder.CreateIcoSphere("icosphere", { radius: 0.5 + Math.random() * 0.5, subdivisions: 2 }, scene)
 	];
-	let pivots = [];
-	pivotPos.forEach((pos, index) => {
-		const pivot = BABYLON.MeshBuilder.CreateSphere("pivot" + index, { diameter: 0.2 }, scene);
-		pivot.position = pos;
-		pivot.parent = player;
-		pivots.push(pivot);
-	});
-	
-	function rotBlock(i: number, axis: string, angle: number, onFinish?: () => void) {
-		const currentWorldPosition = player.getAbsolutePosition().clone();
 
-		player.setPivotPoint(pivots[i].position);
+	// Create 5 random meshes
+	for (let i = 0; i < 5; i++) {
+		// Choose a random shape creator
+		const shapeIndex = Math.floor(Math.random() * shapeCreators.length);
+		const mesh = shapeCreators[shapeIndex]();
 		
-		// Calculate and set the new position to maintain the same world position
-		// We need to reset the player position first to accurately calculate the offset
-		const originalPosition = player.position.clone();
-		player.position = new BABYLON.Vector3(0, 0, 0);
-		const pivotDelta = player.getAbsolutePosition().subtract(currentWorldPosition);
-		player.position = originalPosition.subtract(pivotDelta);
-
-		BABYLON.Animation.CreateAndStartAnimation("rot", player, "rotation." + axis, 60, 15, 0, angle, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT, undefined, onFinish);
+		// Set random position
+		mesh.position = new BABYLON.Vector3(
+			(Math.random() - 0.5) * 15,  // x: -2.5 to 2.5
+			1 + Math.random() * 4,      // y: 1 to 3
+			(Math.random() - 0.5) * 15   // z: -2.5 to 2.5
+		);
+		
+		// Set random color
+		const material = new BABYLON.StandardMaterial(`material${i}`, scene);
+		material.diffuseColor = new BABYLON.Color3(
+			Math.random(),
+			Math.random(),
+			Math.random()
+		);
+		mesh.material = material;
+		
+		// Add to meshes array
+		meshes.push(mesh);
 	}
 
-	setTimeout(() => rotBlock(0, "z", Math.PI / 2), 0);
-	setTimeout(() => rotBlock(8, "x", -Math.PI / 2), 500);
-	//setTimeout(() => rotBlock(9, "x", Math.PI / 2), 1000);
+	let animating = false;
+
+	let pos1 = new BABYLON.Vector3();
+	let pos2 = new BABYLON.Vector3();
+	let rot1 = new BABYLON.Quaternion();
+	let rot2 = new BABYLON.Quaternion();
+
+	let animTime = 0;
+	let animDuration = 1000; // Animation duration in milliseconds
+
+	var pointerDown = function (mesh: BABYLON.AbstractMesh) {
+		console.log("Pointer down on mesh:", mesh.name);
+
+		if (animating) return;
+		animating = true;
+
+		pos1.copyFrom(camera.position);
+		rot1.copyFrom(camera.rotationQuaternion || BABYLON.Quaternion.Identity());
+
+		let matrix = BABYLON.Matrix.LookAtLH(
+			camera.position,
+			mesh.position,
+			BABYLON.Vector3.Up()
+		);
+		matrix.decompose(undefined, rot2, pos2);
+
+		rot2.invertInPlace();
+
+		console.log("Camera rotation before animation:", camera.rotationQuaternion);
+    }
+
+	scene.onPointerObservable.add((pointerInfo) => {      		
+        switch (pointerInfo.type) {
+			case BABYLON.PointerEventTypes.POINTERDOWN:
+				if(pointerInfo.pickInfo.hit) {
+                    pointerDown(pointerInfo.pickInfo.pickedMesh);
+                }
+				break;
+        }
+    });
+
+	scene.onBeforeRenderObservable.add(() => {
+		if (animating) {
+			animTime += scene.getEngine().getDeltaTime();
+			if (animTime >= animDuration) {
+				animating = false;
+				animTime = 0;
+			} else {
+				const ease = new BABYLON.CubicEase();
+				ease.setEasingMode(BABYLON.EasingFunction.EASINGMODE_EASEINOUT);
+				const t = ease.ease(animTime / animDuration);
+				
+				BABYLON.Quaternion.SlerpToRef(rot1, rot2, t, camera.rotationQuaternion);
+			}
+		}
+	});
 
 	return scene;
 };
