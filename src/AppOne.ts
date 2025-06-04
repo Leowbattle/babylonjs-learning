@@ -272,45 +272,70 @@ const createScene = function (engine: BABYLON.Engine, canvas: HTMLCanvasElement)
 		// Initialize contours
 		updateContours();
 	}
+	// Visualization controls
+	const visualizationFolder = gui.addFolder('Visualization');
+	
+	// Wireframe control
+	const wireframeConfig = { enabled: false };
+	let wireframeMesh: BABYLON.Mesh | null = null;
+	
+	visualizationFolder.add(wireframeConfig, 'enabled').name('Show Wireframe').onChange(value => {
+		if (value) {
+			// Enable wireframe visualization
+			const wireframeMaterial = new BABYLON.StandardMaterial("wireframeMaterial", scene);
+			wireframeMaterial.wireframe = true;
+			wireframeMaterial.emissiveColor = new BABYLON.Color3(0, 0.6, 0.8);
 
-	if (false) {
-		// Enable wireframe visualization
-		const wireframeMaterial = new BABYLON.StandardMaterial("wireframeMaterial", scene);
-		wireframeMaterial.wireframe = true;
-		wireframeMaterial.emissiveColor = new BABYLON.Color3(0, 0.6, 0.8);
-
-		// Create a wireframe instance of the mesh
-		const wireframeMesh = groundMesh.clone("wireframe");
-		wireframeMesh.material = wireframeMaterial;
-		wireframeMesh.position.y += 0.01; // Slight offset to prevent z-fighting
-	}
-	if (false) {
-		// Visualize normals
-		const normalLines = [];
-		const normalLength = 2; // Length of normal visualization lines
-
-		for (let i = 0; i < positions.length; i += 3) {
-			const vertexPos = new BABYLON.Vector3(positions[i], positions[i + 1], positions[i + 2]);
-			const normalVec = new BABYLON.Vector3(normals[i], normals[i + 1], normals[i + 2]);
-
-			// Start point of the line is the vertex position
-			normalLines.push([
-				vertexPos,
-				// End point is vertex position + scaled normal vector
-				vertexPos.add(normalVec.scale(normalLength))
-			]);
+			// Create a wireframe instance of the mesh
+			wireframeMesh = groundMesh.clone("wireframe");
+			wireframeMesh.material = wireframeMaterial;
+			wireframeMesh.position.y += 0.01; // Slight offset to prevent z-fighting
+		} else if (wireframeMesh) {
+			// Disable wireframe by disposing the mesh
+			wireframeMesh.dispose();
+			wireframeMesh = null;
 		}
+	});
+	
+	// Normals visualization control
+	const normalsConfig = { enabled: false };
+	let normalVisualizer: BABYLON.LinesMesh | null = null;
+	
+	visualizationFolder.add(normalsConfig, 'enabled').name('Show Normals').onChange(value => {
+		if (value) {
+			// Visualize normals
+			const normalLines = [];
+			const normalLength = 2; // Length of normal visualization lines
 
-		// Create lines system for visualizing normals
-		const normalVisualizer = BABYLON.MeshBuilder.CreateLineSystem(
-			"normalVisualizer",
-			{
-				lines: normalLines,
-				colors: Array(normalLines.length).fill([new BABYLON.Color4(1, 0, 0, 1), new BABYLON.Color4(1, 1, 0, 1)])
-			},
-			scene
-		);
-	}
+			for (let i = 0; i < positions.length; i += 3) {
+				const vertexPos = new BABYLON.Vector3(positions[i], positions[i + 1], positions[i + 2]);
+				const normalVec = new BABYLON.Vector3(normals[i], normals[i + 1], normals[i + 2]);
+
+				// Start point of the line is the vertex position
+				normalLines.push([
+					vertexPos,
+					// End point is vertex position + scaled normal vector
+					vertexPos.add(normalVec.scale(normalLength))
+				]);
+			}
+
+			// Create lines system for visualizing normals
+			normalVisualizer = BABYLON.MeshBuilder.CreateLineSystem(
+				"normalVisualizer",
+				{
+					lines: normalLines,
+					colors: Array(normalLines.length).fill([new BABYLON.Color4(1, 0, 0, 1), new BABYLON.Color4(1, 1, 0, 1)])
+				},
+				scene
+			);
+		} else if (normalVisualizer) {
+			// Disable normals visualization by disposing the mesh
+			normalVisualizer.dispose();
+			normalVisualizer = null;
+		}
+	});
+	
+	visualizationFolder.open();
 
 	return scene;
 };
