@@ -147,6 +147,8 @@ const createScene = function (engine: BABYLON.Engine, canvas: HTMLCanvasElement)
 			const highlightIndices: number[] = [];
 			const highlightNormals: number[] = [];
 
+			let contourPoints = [];
+
 			// Check each triangle
 			for (let i = 0; i < indices.length; i += 3) {
 				// Get indices of the three vertices of this triangle
@@ -165,6 +167,42 @@ const createScene = function (engine: BABYLON.Engine, canvas: HTMLCanvasElement)
 
 				// Check if triangle crosses y
 				if (minY < y && maxY > y) {
+					{// Get position vectors of the 3 vertices
+						const v1 = new BABYLON.Vector3(positions[idx1], positions[idx1 + 1], positions[idx1 + 2]);
+						const v2 = new BABYLON.Vector3(positions[idx2], positions[idx2 + 1], positions[idx2 + 2]);
+						const v3 = new BABYLON.Vector3(positions[idx3], positions[idx3 + 1], positions[idx3 + 2]);
+
+						// Calculate intersection points between the triangle and the plane
+						const intersectionPoints = [];
+
+						// Check each edge of the triangle for intersection with the plane
+						// Edge 1: v1 to v2
+						if ((v1.y < y && v2.y > y) || (v1.y > y && v2.y < y)) {
+							const t = (y - v1.y) / (v2.y - v1.y);
+							const intersection = v1.add(v2.subtract(v1).scale(t));
+							intersectionPoints.push(intersection);
+						}
+
+						// Edge 2: v2 to v3
+						if ((v2.y < y && v3.y > y) || (v2.y > y && v3.y < y)) {
+							const t = (y - v2.y) / (v3.y - v2.y);
+							const intersection = v2.add(v3.subtract(v2).scale(t));
+							intersectionPoints.push(intersection);
+						}
+
+						// Edge 3: v3 to v1
+						if ((v3.y < y && v1.y > y) || (v3.y > y && v1.y < y)) {
+							const t = (y - v3.y) / (v1.y - v3.y);
+							const intersection = v3.add(v1.subtract(v3).scale(t));
+							intersectionPoints.push(intersection);
+						}
+
+						// Create a line showing the intersection if we found two points
+						if (intersectionPoints.length >= 2) {
+							contourPoints = [...contourPoints, ...intersectionPoints];
+						}
+					}
+
 					// Add this triangle to the highlight mesh
 					const baseIdx = highlightPositions.length / 3;
 
@@ -187,6 +225,40 @@ const createScene = function (engine: BABYLON.Engine, canvas: HTMLCanvasElement)
 				}
 			}
 
+			// Create a line system to visualize the contour
+			if (contourPoints.length > 0) {
+				// Organize contour points into a set of connected lines
+				const contourLines = [];
+				
+				// Sort points to form a continuous line
+				// This is a simple approach - for complex contours you might need more sophisticated ordering
+				const sortedPoints = [...contourPoints];
+				
+				// Create pairs of points to form line segments
+				for (let i = 0; i < sortedPoints.length - 1; i += 2) {
+					if (i + 1 < sortedPoints.length) {
+						contourLines.push([sortedPoints[i], sortedPoints[i + 1]]);
+					}
+				}
+				
+				// Create a line system to visualize the contour
+				if (scene.getMeshByName("contourLines")) {
+					scene.getMeshByName("contourLines").dispose();
+				}
+				
+				const contourVisualizer = BABYLON.MeshBuilder.CreateLineSystem(
+					"contourLines",
+					{
+						lines: contourLines,
+						colors: Array(contourLines.length).fill([
+							new BABYLON.Color4(0, 1, 0, 1), 
+							new BABYLON.Color4(0, 1, 0, 1)
+						])
+					},
+					scene
+				);
+			}
+
 			// Apply the vertex data to the highlight mesh
 			highlightData.positions = highlightPositions;
 			highlightData.indices = highlightIndices;
@@ -196,10 +268,12 @@ const createScene = function (engine: BABYLON.Engine, canvas: HTMLCanvasElement)
 			// Apply the highlight material
 			highlightMesh.material = highlightMaterial;
 			highlightMesh.position.y += 0.05; // Slight offset to prevent z-fighting
+
+			highlightMesh.visibility = false;
 		});
 	}
 
-	if (true) {
+	if (false) {
 		// Enable wireframe visualization
 		const wireframeMaterial = new BABYLON.StandardMaterial("wireframeMaterial", scene);
 		wireframeMaterial.wireframe = true;
